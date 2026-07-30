@@ -20,6 +20,8 @@ import {
   Save,
   SlidersHorizontal,
   Download,
+  Sparkles,
+  Bot
 } from "lucide-react";
 import { Chapter, Character, ChapterStatus } from "@/types";
 import { useVaultStore } from "@/store/useVaultStore";
@@ -69,6 +71,15 @@ export function EditorLayout({
   const [saveMessage, setSaveMessage] = useState("");
   const [searchChar, setSearchChar] = useState("");
 
+  const [musePrompt, setMusePrompt] = useState("");
+  const [museResponse, setMuseResponse] = useState("");
+  const [isMuseOpen, setIsMuseOpen] = useState(false);
+  const [isMuseLoading, setIsMuseLoading] = useState(false);
+
+  const [critiqueResponse, setCritiqueResponse] = useState("");
+  const [isCritiqueOpen, setIsCritiqueOpen] = useState(false);
+  const [isCritiqueLoading, setIsCritiqueLoading] = useState(false);
+
   useEffect(() => {
     if (activeChapter) {
       setTitle(activeChapter.title || "");
@@ -93,6 +104,42 @@ export function EditorLayout({
       setTimeout(() => setSaveMessage(""), 2500);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleAskMuse = async () => {
+    if (!musePrompt.trim() || !activeChapter) return;
+    setIsMuseLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${activeChapter.projectId}/ai/muse/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: musePrompt }),
+      });
+      const data = await res.json();
+      setMuseResponse(data.advice || "No response received.");
+    } catch (e) {
+      setMuseResponse("Error connecting to the Muse.");
+    } finally {
+      setIsMuseLoading(false);
+    }
+  };
+
+  const handleCritique = async () => {
+    if (!activeChapter) return;
+    setIsCritiqueOpen(true);
+    setIsCritiqueLoading(true);
+    setCritiqueResponse("");
+    try {
+      const res = await fetch(`/api/projects/${activeChapter.projectId}/chapters/${activeChapter.id}/ai/critique/`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      setCritiqueResponse(data.critique || "No critique received.");
+    } catch (e) {
+      setCritiqueResponse("Error getting critique.");
+    } finally {
+      setIsCritiqueLoading(false);
     }
   };
 
@@ -311,6 +358,25 @@ export function EditorLayout({
                   >
                     <Quote className="w-4 h-4" />
                   </button>
+
+                  <div className="w-px h-4 bg-white/10 mx-2"></div>
+
+                  <button
+                    onClick={() => setIsMuseOpen(!isMuseOpen)}
+                    className={`p-1.5 rounded transition-colors flex items-center gap-1.5 ${isMuseOpen ? 'bg-purple-600/20 text-purple-300' : 'text-neutral-400 hover:bg-white/5 hover:text-purple-300'}`}
+                    title="Ask The Muse"
+                  >
+                    <Bot className="w-4 h-4" />
+                    <span className="text-[10px] font-semibold hidden sm:inline">Muse</span>
+                  </button>
+                  <button
+                    onClick={handleCritique}
+                    className={`p-1.5 rounded transition-colors flex items-center gap-1.5 ${isCritiqueOpen ? 'bg-indigo-600/20 text-indigo-300' : 'text-neutral-400 hover:bg-white/5 hover:text-indigo-300'}`}
+                    title="Chapter Critique"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span className="text-[10px] font-semibold hidden sm:inline">Critique</span>
+                  </button>
                 </div>
 
                 {/* Status selector */}
@@ -346,7 +412,63 @@ export function EditorLayout({
               </div>
 
               {/* Distraction-Free Manuscript Area */}
-              <div className="flex-1 overflow-y-auto px-6 py-12 flex justify-center">
+              <div className="flex-1 overflow-y-auto px-6 py-12 flex justify-center relative">
+                
+                {/* MUSE PANEL */}
+                {isMuseOpen && (
+                  <div className="absolute top-4 left-4 w-80 bg-[#181b20] border border-purple-500/30 rounded-xl shadow-2xl flex flex-col z-10 overflow-hidden">
+                    <div className="bg-purple-900/20 p-3 border-b border-purple-500/20 flex justify-between items-center">
+                      <span className="text-xs font-semibold text-purple-200 flex items-center gap-1.5"><Bot className="w-3.5 h-3.5"/> The Muse</span>
+                      <button onClick={() => setIsMuseOpen(false)} className="text-purple-400 hover:text-purple-200"><Trash2 className="w-3.5 h-3.5"/></button>
+                    </div>
+                    <div className="p-4 flex-1 overflow-y-auto max-h-64 text-xs text-neutral-300 whitespace-pre-wrap leading-relaxed">
+                      {isMuseLoading ? (
+                        <div className="flex items-center gap-2 text-purple-400 animate-pulse">
+                          <Sparkles className="w-3.5 h-3.5" /> Consulting the aether...
+                        </div>
+                      ) : museResponse ? (
+                        museResponse
+                      ) : (
+                        <span className="text-neutral-500 italic">Ask a question about your plot, characters, or world...</span>
+                      )}
+                    </div>
+                    <div className="p-3 border-t border-white/5 bg-[#14171c]">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={musePrompt}
+                          onChange={(e) => setMusePrompt(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleAskMuse()}
+                          placeholder="What if the villain..."
+                          className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-purple-500/50"
+                        />
+                        <button onClick={handleAskMuse} disabled={isMuseLoading} className="bg-purple-600 hover:bg-purple-500 text-white p-1.5 rounded-lg disabled:opacity-50">
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* CRITIQUE PANEL */}
+                {isCritiqueOpen && (
+                  <div className="absolute top-4 right-4 w-96 bg-[#181b20] border border-indigo-500/30 rounded-xl shadow-2xl flex flex-col z-10 overflow-hidden">
+                    <div className="bg-indigo-900/20 p-3 border-b border-indigo-500/20 flex justify-between items-center">
+                      <span className="text-xs font-semibold text-indigo-200 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5"/> Chapter Critique</span>
+                      <button onClick={() => setIsCritiqueOpen(false)} className="text-indigo-400 hover:text-indigo-200">Close</button>
+                    </div>
+                    <div className="p-4 flex-1 overflow-y-auto max-h-96 text-xs text-neutral-300 whitespace-pre-wrap leading-relaxed">
+                      {isCritiqueLoading ? (
+                        <div className="flex items-center gap-2 text-indigo-400 animate-pulse">
+                          <Sparkles className="w-3.5 h-3.5" /> Analyzing pacing, dialogue, and impact...
+                        </div>
+                      ) : (
+                        critiqueResponse
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="w-full max-w-3xl flex flex-col space-y-6">
                   {/* Chapter Title Input */}
                   <input

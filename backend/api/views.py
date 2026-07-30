@@ -16,6 +16,8 @@ from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+import json
+from . import ai_utils
 
 from .models import (
     Project,
@@ -101,6 +103,31 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return Response({"message": "Sample project seeded successfully!", "projectId": project.id})
 
+    @action(detail=True, methods=["post"], url_path="ai/generate-character")
+    def generate_character(self, request, pk=None):
+        project = self.get_object()
+        result = ai_utils.generate_ai_character(project)
+        try:
+            char_data = json.loads(result)
+            char_data['project'] = project.id
+            serializer = CharacterSerializer(data=char_data)
+            if serializer.is_valid():
+                serializer.save(project=project)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": "Failed to parse AI response", "details": str(e), "raw": result}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=["post"], url_path="ai/muse")
+    def ask_muse(self, request, pk=None):
+        project = self.get_object()
+        prompt = request.data.get("prompt", "")
+        if not prompt:
+            return Response({"error": "Prompt is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        advice = ai_utils.ask_muse(project, prompt)
+        return Response({"advice": advice})
+
 
 class NestedProjectViewSet(viewsets.ModelViewSet):
     """
@@ -138,6 +165,19 @@ class ChapterViewSet(NestedProjectViewSet):
             last = Chapter.objects.filter(project=project).order_by("-order_index").first()
             order_index = (last.order_index + 1) if last else 1
         serializer.save(project=project, order_index=order_index)
+
+    def perform_destroy(self, instance):
+        project = instance.project
+        super().perform_destroy(instance)
+        # Recalculate word count
+        project.word_count = sum(c.word_count for c in project.chapters.all())
+        project.save()
+
+    @action(detail=True, methods=["post"], url_path="ai/critique")
+    def critique(self, request, project_pk=None, pk=None):
+        chapter = self.get_object()
+        critique_text = ai_utils.critique_chapter(chapter)
+        return Response({"critique": critique_text})
 
     @action(detail=False, methods=["post"], url_path="reorder")
     @transaction.atomic

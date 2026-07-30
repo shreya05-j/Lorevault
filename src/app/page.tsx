@@ -171,6 +171,20 @@ export default function Home() {
     },
   });
 
+  // Generate AI Character
+  const generateCharacterMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/projects/${activeProjectId}/ai/generate-character`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Failed to generate character");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", activeProjectId] });
+    },
+  });
+
   // Create Chapter
   const createChapterMutation = useMutation({
     mutationFn: async (data: { title: string; status: ChapterStatus }) => {
@@ -544,6 +558,16 @@ export default function Home() {
                         </button>
                       ))}
                     </div>
+
+                    <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => generateCharacterMutation.mutate()}
+                      disabled={generateCharacterMutation.isPending}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-purple-100 rounded-lg text-xs font-semibold shadow-md transition-all disabled:opacity-50"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{generateCharacterMutation.isPending ? "Generating..." : "✨ AI Generate"}</span>
+                    </button>
 
                     <button
                       onClick={() => {
