@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-dark: #121417;
+    --bg-card: #181b20;
+    --border-subtle: #272c35;
+    --accent-gold: #d4a373;
+    --accent-amber: #e09f3e;
+    --accent-emerald: #40916c;
+    --accent-crimson: #9e2a2b;
+    --text-primary: #e9ecef;
+    --text-muted: #8e9aab;
+  }
+
+  body {
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, .font-serif {
+    font-family: 'Georgia', 'Playfair Display', 'Merriweather', serif;
+    letter-spacing: -0.015em;
+  }
+}
+
+/* Custom aesthetic scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #121417;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2b303b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f4756;
+}
+
+/* Glass & aesthetic studio borders */
+.bg-vault-card {
+  background-color: rgba(24, 27, 32, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.border-vault {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.text-gold {
+  color: #d4a373;
+}
+
+.border-gold-subtle {
+  border-color: rgba(212, 163, 115, 0.3);
+}
+
+.bg-gold-subtle {
+  background-color: rgba(212, 163, 115, 0.1);
+}
